@@ -36,7 +36,7 @@ fn main() {
         };
         let ganadorCasilla: Casilla;
         relleno_matriz(&mut matriz, input, Casilla::Cruz);
-        ia2(&mut matriz);
+        ia(&mut matriz);
         (terminado, ganadorCasilla) = comprobar_ganador(&matriz);
         dibujo_matriz(&matriz);
     }
@@ -54,6 +54,10 @@ fn relleno_matriz(matriz: &mut [[char; 3]; 3], input: u32, estado: Casilla) {
                     Casilla::Vacio => ' ',
                 };
                 return; // salimos una vez asignado
+            }
+            if matriz[fila][columna] != ' '{
+                println!("Posición ya ocupada, se salta su turno");
+                return;
             }
             cont += 1;
         }
@@ -129,35 +133,12 @@ fn ia(matriz: &mut [[char; 3]; 3]){
 
 fn ia2(matriz: &mut [[char; 3]; 3]){
     let mut encontrado: bool = false;
-    for x in 0..3{
-        for y in 0..3{
-            if matriz[x][y] == 'O'{
-                encontrado = true;
-                if x > 0 && y > 0{
-                    for m in x-1..=x+1{
-                        for n in y-1..=y+1{
-                            if (0..3).contains(&m) && (0..3).contains(&n){
-                                if matriz[m][n] == ' '{
-                                    matriz[m][n] = 'O';
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                } 
-                else{
-                    for m in x..=x+1{
-                        for n in y..=y+1{
-                            if (0..3).contains(&m) && (0..3).contains(&n){
-                                if matriz[m][n] == ' '{
-                                    matriz[m][n] = 'O';
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    for fila in 0..3{
+        for columna in 0..3{
+           if matriz[fila][columna] == 'O'{
+               encontrado = true;
+
+           } 
         }
     }
     if !encontrado{
@@ -249,6 +230,19 @@ fn comprobar_ganador (matriz: & [[char; 3];3]) -> (bool, Casilla){
         return (true, solFicha); 
     }
 
+    //contemplar el caso de que el tablero esté lleno sin solución
+    let mut completo : bool = true;
+    for fila in 0..3{
+        for columna in 0..3{
+            if matriz[fila][columna] == ' '{
+                completo = false;
+            }
+        }
+
+    }
+    if completo {
+        return (true, Casilla::Vacio);
+    }
 
     (false, Casilla::Vacio)
 }
