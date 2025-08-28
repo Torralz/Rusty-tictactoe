@@ -34,9 +34,10 @@ fn main() {
                 continue;
             }
         };
-        let ganadorCasilla: Casilla;
+        let ganadorCasilla: i32;
         relleno_matriz(&mut matriz, input, Casilla::Cruz);
-        ia(&mut matriz);
+        let (fila, columna) = ia(&mut matriz);
+        matriz[fila][columna] = 'O';
         (terminado, ganadorCasilla) = comprobar_ganador(&matriz);
         dibujo_matriz(&matriz);
     }
@@ -54,10 +55,6 @@ fn relleno_matriz(matriz: &mut [[char; 3]; 3], input: u32, estado: Casilla) {
                     Casilla::Vacio => ' ',
                 };
                 return; // salimos una vez asignado
-            }
-            if matriz[fila][columna] != ' '{
-                println!("Posición ya ocupada, se salta su turno");
-                return;
             }
             cont += 1;
         }
@@ -85,102 +82,84 @@ fn dibujo_matriz(matriz: &[[char; 3]; 3]) {
     );
 }
 
-fn ia(matriz: &mut [[char; 3]; 3]){
-    let mut encontrado: bool = false;
-    for x in 0..3{
-        for y in 0..3{
-            if matriz[x][y] == 'O'{
-                encontrado = true;
-                if x > 0 && y > 0{
-                    for m in x-1..=x+1{
-                        for n in y-1..=y+1{
-                            if (0..3).contains(&m) && (0..3).contains(&n){
-                                if matriz[m][n] == ' '{
-                                    matriz[m][n] = 'O';
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                } 
-                else{
-                    for m in x..=x+1{
-                        for n in y..=y+1{
-                            if (0..3).contains(&m) && (0..3).contains(&n){
-                                if matriz[m][n] == ' '{
-                                    matriz[m][n] = 'O';
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+fn ia(matriz: &mut [[char; 3]; 3])->(usize, usize){
+    let mut mejorPuntuacion = i32::MIN;
+    let mut mejorJugada = (0,0);
+    for (fila, columna) in posibles_movimientos(matriz){
+        matriz[fila][columna] = 'O';
+        let puntuacion = minMax(matriz, 'X');
+        matriz[fila][columna] = ' ';
+        if puntuacion > mejorPuntuacion{
+            mejorPuntuacion = puntuacion;
+            mejorJugada = (fila, columna);
         }
     }
-    if !encontrado{
-        let mut rng = rand::thread_rng(); // Corregido: usar thread_rng()
-        loop {
-            let fila: usize = rng.gen_range(0..3); // Cambiado a usize y rango 0..3
-            let colu: usize = rng.gen_range(0..3); // Cambiado a usize y rango 0..3
-            if matriz[fila][colu] == ' ' {
-                matriz[fila][colu] = 'O'; // La IA juega con 'O'
-                break;
-            }
-        }
-    }
+    mejorJugada
 }
 
-fn ia2(matriz: &mut [[char; 3]; 3]){
-    let mut encontrado: bool = false;
+fn minMax(matriz: &mut [[char; 3]; 3], jugador: char) -> i32{
+    let (terminado, ganador) = comprobar_ganador(&matriz);
+    if terminado {
+        return ganador;
+    }
+    let mut mejorJugada;
+    
+    if jugador == 'O'{//Maximizamos
+        mejorJugada = i32::MIN;
+        for (fila, columna) in posibles_movimientos(matriz){
+            matriz[fila][columna] = 'O';
+            let jugada = minMax(matriz, 'X');
+            matriz[fila][columna] = ' ';
+            mejorJugada = mejorJugada.max(jugada);
+        }
+    }
+    else{
+        mejorJugada = i32::MAX;
+        for (fila, columna) in posibles_movimientos(matriz){
+            matriz[fila][columna] = 'X';
+            let jugada = minMax(matriz, 'O');
+            matriz[fila][columna] = ' ';
+            mejorJugada = mejorJugada.min(jugada);
+        }
+    }
+   mejorJugada 
+}
+
+fn posibles_movimientos(matriz: &[[char; 3]; 3] )->Vec<(usize, usize)>{
+    let mut movimientos = Vec::new();
     for fila in 0..3{
         for columna in 0..3{
-           if matriz[fila][columna] == 'O'{
-               encontrado = true;
-
-           } 
-        }
-    }
-    if !encontrado{
-        let mut rng = rand::thread_rng(); // Corregido: usar thread_rng()
-        if matriz[1][1] == ' '{
-            matriz[1][1] = 'O';
-        }else{
-            loop {
-                let fila: usize = rng.gen_range(0..3); // Cambiado a usize y rango 0..3
-                let colu: usize = rng.gen_range(0..3); // Cambiado a usize y rango 0..3
-                if matriz[fila][colu] == ' ' {
-                    matriz[fila][colu] = 'O'; // La IA juega con 'O'
-                    break;
-                }
+            if matriz[fila][columna] == ' '{
+                movimientos.push((fila, columna));
             }
         }
     }
+    movimientos
 }
 
-fn comprobar_ganador (matriz: & [[char; 3];3]) -> (bool, Casilla){
-    let solFicha: Casilla;
+fn comprobar_ganador (matriz: & [[char; 3];3]) -> (bool, i32){
+    let solFicha: i32;
     //primero comprobamos las horizontales
     if matriz[0][0] == matriz[0][1] && matriz[0][2] == matriz[0][1] && matriz[0][1] != ' ' {
         match matriz[0][0] {
-            'X' => solFicha = Casilla::Cruz,
-            'O' => solFicha = Casilla::Circulo,
+            'X' => solFicha = -10,
+            'O' => solFicha = 10,
             _ => todo!(),
         }
         return (true, solFicha); 
     }
     if matriz[1][0] == matriz[1][1] && matriz[1][2] == matriz[1][1] && matriz[1][1] != ' ' {
         match matriz[1][0] {
-            'X' => solFicha = Casilla::Cruz,
-            'O' => solFicha = Casilla::Circulo,
+            'X' => solFicha = -10,
+            'O' => solFicha = 10,
             _ => todo!(),
         }
         return (true, solFicha); 
     }
     if matriz[2][0] == matriz[2][1] && matriz[2][2] == matriz[2][1] && matriz[2][1] != ' ' {
         match matriz[2][0] {
-            'X' => solFicha = Casilla::Cruz,
-            'O' => solFicha = Casilla::Circulo,
+            'X' => solFicha = -10,
+            'O' => solFicha = 10,
             _ => todo!(),
         }
         return (true, solFicha); 
@@ -189,24 +168,24 @@ fn comprobar_ganador (matriz: & [[char; 3];3]) -> (bool, Casilla){
     //Seguimos comprobando las Verticales
     if matriz[0][0] == matriz[1][0] && matriz[2][0] == matriz[1][0] && matriz[1][0] != ' ' {
         match matriz[0][0] {
-            'X' => solFicha = Casilla::Cruz,
-            'O' => solFicha = Casilla::Circulo,
+            'X' => solFicha = -10,
+            'O' => solFicha = 10,
             _ => todo!(),
         }
         return (true, solFicha); 
     }
     if matriz[0][1] == matriz[1][1] && matriz[2][1] == matriz[1][1] && matriz[1][1] != ' ' {
         match matriz[0][1] {
-            'X' => solFicha = Casilla::Cruz,
-            'O' => solFicha = Casilla::Circulo,
+            'X' => solFicha = -10,
+            'O' => solFicha = 10,
             _ => todo!(),
         }
         return (true, solFicha); 
     }
     if matriz[0][2] == matriz[1][2] && matriz[2][2] == matriz[1][2] && matriz[1][2] != ' ' {
         match matriz[0][2] {
-            'X' => solFicha = Casilla::Cruz,
-            'O' => solFicha = Casilla::Circulo,
+            'X' => solFicha = -10,
+            'O' => solFicha = 10,
             _ => todo!(),
         }
         return (true, solFicha); 
@@ -215,16 +194,16 @@ fn comprobar_ganador (matriz: & [[char; 3];3]) -> (bool, Casilla){
     //Para terminar comprobamos las diagonales
     if matriz[0][0] == matriz[1][1] && matriz[2][2] == matriz[1][1] && matriz[1][1] != ' ' {
         match matriz[0][0] {
-            'X' => solFicha = Casilla::Cruz,
-            'O' => solFicha = Casilla::Circulo,
+            'X' => solFicha = -10,
+            'O' => solFicha = 10,
             _ => todo!(),
         }
         return (true, solFicha); 
     }
     if matriz[0][2] == matriz[1][1] && matriz[2][0] == matriz[1][1] && matriz[1][1] != ' ' {
         match matriz[0][2] {
-            'X' => solFicha = Casilla::Cruz,
-            'O' => solFicha = Casilla::Circulo,
+            'X' => solFicha = -10,
+            'O' => solFicha = 10,
             _ => todo!(),
         }
         return (true, solFicha); 
@@ -241,8 +220,8 @@ fn comprobar_ganador (matriz: & [[char; 3];3]) -> (bool, Casilla){
 
     }
     if completo {
-        return (true, Casilla::Vacio);
+        return (true, 0);
     }
 
-    (false, Casilla::Vacio)
+    (false, 0)
 }
